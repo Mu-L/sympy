@@ -1,12 +1,12 @@
 """Options manager for :class:`~.Poly` and public API functions. """
 
+from __future__ import annotations
 
 __all__ = ["Options"]
 
-from typing import Dict as tDict, Type
-from typing import List, Optional
-
-from sympy.core import Basic, sympify
+from sympy.core.basic import Basic
+from sympy.core.expr import Expr
+from sympy.core.sympify import sympify
 from sympy.polys.polyerrors import GeneratorsError, OptionError, FlagError
 from sympy.utilities import numbered_symbols, topological_sort, public
 from sympy.utilities.iterables import has_dups, is_sequence
@@ -18,15 +18,15 @@ import re
 class Option:
     """Base class for all kinds of options. """
 
-    option = None  # type: Optional[str]
+    option: str | None = None
 
     is_Flag = False
 
-    requires = []  # type: List[str]
-    excludes = []  # type: List[str]
+    requires: list[str] = []
+    excludes: list[str] = []
 
-    after = []  # type: List[str]
-    before = []  # type: List[str]
+    after: list[str] = []
+    before: list[str] = []
 
     @classmethod
     def default(cls):
@@ -123,7 +123,10 @@ class Options(dict):
     """
 
     __order__ = None
-    __options__ = {}  # type: tDict[str, Type[Option]]
+    __options__: dict[str, type[Option]] = {}
+
+    gens: tuple[Expr, ...]
+    domain: sympy.polys.domains.Domain
 
     def __init__(self, gens, args, flags=None, strict=False):
         dict.__init__(self)
@@ -154,7 +157,7 @@ class Options(dict):
 
         preprocess_options(args)
 
-        for key, value in dict(defaults).items():
+        for key in dict(defaults):
             if key in self:
                 del defaults[key]
             else:
@@ -190,11 +193,9 @@ class Options(dict):
             for name, option in cls.__options__.items():
                 vertices.append(name)
 
-                for _name in option.after:
-                    edges.add((_name, name))
+                edges.update((_name, name) for _name in option.after)
 
-                for _name in option.before:
-                    edges.add((name, _name))
+                edges.update((name, _name) for _name in option.before)
 
             try:
                 cls.__order__ = topological_sort((vertices, list(edges)))
@@ -259,8 +260,8 @@ class Expand(BooleanOption, metaclass=OptionType):
 
     option = 'expand'
 
-    requires = []  # type: List[str]
-    excludes = []  # type: List[str]
+    requires: list[str] = []
+    excludes: list[str] = []
 
     @classmethod
     def default(cls):
@@ -272,8 +273,8 @@ class Gens(Option, metaclass=OptionType):
 
     option = 'gens'
 
-    requires = []  # type: List[str]
-    excludes = []  # type: List[str]
+    requires: list[str] = []
+    excludes: list[str] = []
 
     @classmethod
     def default(cls):
@@ -301,8 +302,8 @@ class Wrt(Option, metaclass=OptionType):
 
     option = 'wrt'
 
-    requires = []  # type: List[str]
-    excludes = []  # type: List[str]
+    requires: list[str] = []
+    excludes: list[str] = []
 
     _re_split = re.compile(r"\s*,\s*|\s+")
 
@@ -316,7 +317,7 @@ class Wrt(Option, metaclass=OptionType):
                 raise OptionError('Bad input: missing parameter.')
             if not wrt:
                 return []
-            return [ gen for gen in cls._re_split.split(wrt) ]
+            return list(cls._re_split.split(wrt))
         elif hasattr(wrt, '__getitem__'):
             return list(map(str, wrt))
         else:
@@ -328,8 +329,8 @@ class Sort(Option, metaclass=OptionType):
 
     option = 'sort'
 
-    requires = []  # type: List[str]
-    excludes = []  # type: List[str]
+    requires: list[str] = []
+    excludes: list[str] = []
 
     @classmethod
     def default(cls):
@@ -350,8 +351,8 @@ class Order(Option, metaclass=OptionType):
 
     option = 'order'
 
-    requires = []  # type: List[str]
-    excludes = []  # type: List[str]
+    requires: list[str] = []
+    excludes: list[str] = []
 
     @classmethod
     def default(cls):
@@ -367,7 +368,7 @@ class Field(BooleanOption, metaclass=OptionType):
 
     option = 'field'
 
-    requires = []  # type: List[str]
+    requires: list[str] = []
     excludes = ['domain', 'split', 'gaussian']
 
 
@@ -376,7 +377,7 @@ class Greedy(BooleanOption, metaclass=OptionType):
 
     option = 'greedy'
 
-    requires = []  # type: List[str]
+    requires: list[str] = []
     excludes = ['domain', 'split', 'gaussian', 'extension', 'modulus', 'symmetric']
 
 
@@ -389,7 +390,7 @@ class Composite(BooleanOption, metaclass=OptionType):
     def default(cls):
         return None
 
-    requires = []  # type: List[str]
+    requires: list[str] = []
     excludes = ['domain', 'split', 'gaussian', 'extension', 'modulus', 'symmetric']
 
 
@@ -398,7 +399,7 @@ class Domain(Option, metaclass=OptionType):
 
     option = 'domain'
 
-    requires = []  # type: List[str]
+    requires: list[str] = []
     excludes = ['field', 'greedy', 'split', 'gaussian', 'extension']
 
     after = ['gens']
@@ -513,7 +514,7 @@ class Split(BooleanOption, metaclass=OptionType):
 
     option = 'split'
 
-    requires = []  # type: List[str]
+    requires: list[str] = []
     excludes = ['field', 'greedy', 'domain', 'gaussian', 'extension',
         'modulus', 'symmetric']
 
@@ -528,7 +529,7 @@ class Gaussian(BooleanOption, metaclass=OptionType):
 
     option = 'gaussian'
 
-    requires = []  # type: List[str]
+    requires: list[str] = []
     excludes = ['field', 'greedy', 'domain', 'split', 'extension',
         'modulus', 'symmetric']
 
@@ -544,7 +545,7 @@ class Extension(Option, metaclass=OptionType):
 
     option = 'extension'
 
-    requires = []  # type: List[str]
+    requires: list[str] = []
     excludes = ['greedy', 'domain', 'split', 'gaussian', 'modulus',
         'symmetric']
 
@@ -577,7 +578,7 @@ class Modulus(Option, metaclass=OptionType):
 
     option = 'modulus'
 
-    requires = []  # type: List[str]
+    requires: list[str] = []
     excludes = ['greedy', 'split', 'domain', 'gaussian', 'extension']
 
     @classmethod

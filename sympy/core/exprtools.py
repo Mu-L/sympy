@@ -1,5 +1,7 @@
 """Tools for manipulating of large commutative expressions. """
 
+from __future__ import annotations
+
 from .add import Add
 from .mul import Mul, _keep_coeff
 from .power import Pow
@@ -7,7 +9,7 @@ from .basic import Basic
 from .expr import Expr
 from .function import expand_power_exp
 from .sympify import sympify
-from .numbers import Rational, Integer, Number, I
+from .numbers import Rational, Integer, Number, I, equal_valued
 from .singleton import S
 from .sorting import default_sort_key, ordered
 from .symbol import Dummy
@@ -277,8 +279,11 @@ def decompose_power_rat(expr: Expr) -> tTuple[Expr, Rational]:
     (exp(x/2), -3)
 
     """
-    _ = base, exp = expr.as_base_exp()
-    return _ if exp.is_Rational else decompose_power(expr)
+    base, exp = expr.as_base_exp()
+    if not exp.is_Rational:
+        base, exp_i = decompose_power(expr)
+        exp = Integer(exp_i)
+    return base, exp # type: ignore
 
 
 class Factors:
@@ -382,9 +387,9 @@ class Factors:
                             factors[I] = S.One
                         elif a.is_Pow:
                             factors[a.base] = factors.get(a.base, S.Zero) + a.exp
-                        elif a == 1:
+                        elif equal_valued(a, 1):
                             factors[a] = S.One
-                        elif a == -1:
+                        elif equal_valued(a, -1):
                             factors[-a] = S.One
                             factors[S.NegativeOne] = S.One
                         else:
@@ -921,7 +926,7 @@ def _gcd_terms(terms, isprimitive=False, fraction=True):
     isprimitive : boolean, optional
         If ``isprimitive`` is True then the call to primitive
         for an Add will be skipped. This is useful when the
-        content has already been extrated.
+        content has already been extracted.
 
     fraction : boolean, optional
         If ``fraction`` is True then the expression will appear over a common
@@ -1153,7 +1158,7 @@ def _factor_sum_int(expr, **kwargs):
         return i * expr.func(d, *limits)
 
 
-def factor_terms(expr, radical=False, clear=False, fraction=False, sign=True):
+def factor_terms(expr: Expr | complex, radical=False, clear=False, fraction=False, sign=True) -> Expr:
     """Remove common factors from terms in all arguments without
     changing the underlying structure of the expr. No expansion or
     simplification (and no processing of non-commutatives) is performed.
@@ -1263,8 +1268,8 @@ def factor_terms(expr, radical=False, clear=False, fraction=False, sign=True):
                 *[do(a) for a in p.args])
         rv = _keep_coeff(cont, p, clear=clear, sign=sign)
         return rv
-    expr = sympify(expr)
-    return do(expr)
+    expr2 = sympify(expr)
+    return do(expr2)
 
 
 def _mask_nc(eq, name=None):

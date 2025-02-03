@@ -13,10 +13,9 @@ sympy.stats.frv
 sympy.stats.rv_interface
 """
 
-
+from __future__ import annotations
 from functools import singledispatch
 from math import prod
-from typing import Tuple as tTuple
 
 from sympy.core.add import Add
 from sympy.core.basic import Basic
@@ -45,16 +44,22 @@ from sympy.utilities.exceptions import sympy_deprecation_warning
 from sympy.utilities.iterables import iterable
 
 
+__doctest_requires__ = {('sample',): ['scipy']}
+
+
 x = Symbol('x')
+
 
 @singledispatch
 def is_random(x):
     return False
 
+
 @is_random.register(Basic)
 def _(x):
     atoms = x.free_symbols
     return any(is_random(i) for i in atoms)
+
 
 class RandomDomain(Basic):
     """
@@ -1306,11 +1311,11 @@ def sample_iter(expr, condition=None, size=(), library='scipy',
         expr = expr.subs(sub)
 
     def fn_subs(*args):
-        return expr.subs({rv: arg for rv, arg in zip(rvs, args)})
+        return expr.subs(dict(zip(rvs, args)))
 
     def given_fn_subs(*args):
         if condition is not None:
-            return condition.subs({rv: arg for rv, arg in zip(rvs, args)})
+            return condition.subs(dict(zip(rvs, args)))
         return False
 
     if library in ('pymc', 'pymc3'):
@@ -1447,7 +1452,7 @@ def sampling_E(expr, given_condition=None, library='scipy', numsamples=1,
     """
     samples = list(sample_iter(expr, given_condition, library=library,
                           numsamples=numsamples, seed=seed, **kwargs))
-    result = Add(*[samp for samp in samples]) / numsamples
+    result = Add(*samples) / numsamples
 
     if evalf:
         return result.evalf()
@@ -1579,7 +1584,7 @@ def rv_subs(expr, symbols=None):
 
 
 class NamedArgsMixin:
-    _argnames = ()  # type: tTuple[str, ...]
+    _argnames: tuple[str, ...] = ()
 
     def __getattr__(self, attr):
         try:

@@ -1,4 +1,5 @@
-from typing import Dict as tDict, Callable
+from __future__ import annotations
+from typing import Callable
 
 from sympy.core import S, Add, Expr, Basic, Mul, Pow, Rational
 from sympy.core.logic import fuzzy_not
@@ -14,13 +15,13 @@ def refine(expr, assumptions=True):
     Explanation
     ===========
 
-    Unlike :func:`~.simplify()` which performs structural simplification
+    Unlike :func:`~.simplify` which performs structural simplification
     without any assumption, this function transforms the expression into
     the form which is only valid under certain assumptions. Note that
     ``simplify()`` is generally not done in refining process.
 
     Refining boolean expression involves reducing it to ``S.true`` or
-    ``S.false``. Unlike :func:`~.ask()`, the expression will not be reduced
+    ``S.false``. Unlike :func:`~.ask`, the expression will not be reduced
     if the truth value cannot be determined.
 
     Examples
@@ -392,7 +393,7 @@ def refine_matrixelement(expr, assumptions):
             return expr
         return MatrixElement(matrix, j, i)
 
-handlers_dict = {
+handlers_dict: dict[str, Callable[[Expr, Boolean], Expr]] = {
     'Abs': refine_abs,
     'Pow': refine_Pow,
     'atan2': refine_atan2,
@@ -401,4 +402,4 @@ handlers_dict = {
     'arg': refine_arg,
     'sign': refine_sign,
     'MatrixElement': refine_matrixelement
-}  # type: tDict[str, Callable[[Expr, Boolean], Expr]]
+}

@@ -1,5 +1,5 @@
 from sympy.core import S, diff
-from sympy.core.function import Function, ArgumentIndexError
+from sympy.core.function import DefinedFunction, ArgumentIndexError
 from sympy.core.logic import fuzzy_not
 from sympy.core.relational import Eq, Ne
 from sympy.functions.elementary.complexes import im, sign
@@ -14,7 +14,7 @@ from sympy.utilities.misc import filldedent
 ###############################################################################
 
 
-class DiracDelta(Function):
+class DiracDelta(DefinedFunction):
     r"""
     The DiracDelta function and its derivatives.
 
@@ -94,7 +94,7 @@ class DiracDelta(Function):
     References
     ==========
 
-    .. [1] http://mathworld.wolfram.com/DeltaFunction.html
+    .. [1] https://mathworld.wolfram.com/DeltaFunction.html
 
     """
 
@@ -390,7 +390,7 @@ class DiracDelta(Function):
 ###############################################################################
 
 
-class Heaviside(Function):
+class Heaviside(DefinedFunction):
     r"""
     Heaviside step function.
 
@@ -441,8 +441,8 @@ class Heaviside(Function):
     References
     ==========
 
-    .. [1] http://mathworld.wolfram.com/HeavisideStepFunction.html
-    .. [2] http://dlmf.nist.gov/1.16#iv
+    .. [1] https://mathworld.wolfram.com/HeavisideStepFunction.html
+    .. [2] https://dlmf.nist.gov/1.16#iv
 
     """
 
@@ -592,7 +592,7 @@ class Heaviside(Function):
         Explanation
         ===========
 
-        The value of Heaviside(0) must be 1/2 for rewritting as sign to be
+        The value of Heaviside(0) must be 1/2 for rewriting as sign to be
         strictly equivalent. For easier usage, we also allow this rewriting
         when Heaviside(0) is undefined.
 

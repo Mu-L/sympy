@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from typing import overload, TYPE_CHECKING
+
 from operator import attrgetter
-from typing import Tuple as tTuple, Type
 from collections import defaultdict
 
 from sympy.utilities.exceptions import sympy_deprecation_warning
@@ -14,6 +17,13 @@ from sympy.utilities.iterables import sift
 from sympy.multipledispatch.dispatcher import (Dispatcher,
     ambiguity_register_error_ignore_dup,
     str_signature, RaiseNotImplementedError)
+
+
+if TYPE_CHECKING:
+    from sympy.core.expr import Expr
+    from sympy.core.add import Add
+    from sympy.core.mul import Mul
+    from sympy.logic.boolalg import Boolean, And, Or
 
 
 class AssocOp(Basic):
@@ -45,9 +55,9 @@ class AssocOp(Basic):
 
     # for performance reason, we don't let is_commutative go to assumptions,
     # and keep it right here
-    __slots__ = ('is_commutative',)  # type: tTuple[str, ...]
+    __slots__: tuple[str, ...] = ('is_commutative',)
 
-    _args_type = None  # type: Type[Basic]
+    _args_type: type[Basic] | None = None
 
     @cacheit
     def __new__(cls, *args, evaluate=None, _sympify=True):
@@ -426,8 +436,21 @@ this object, use the * or + operator instead.
                 args.append(newa)
         return self.func(*args)
 
+    @overload
     @classmethod
-    def make_args(cls, expr):
+    def make_args(cls: type[Add], expr: Expr) -> tuple[Expr, ...]: ... # type: ignore
+    @overload
+    @classmethod
+    def make_args(cls: type[Mul], expr: Expr) -> tuple[Expr, ...]: ... # type: ignore
+    @overload
+    @classmethod
+    def make_args(cls: type[And], expr: Boolean) -> tuple[Boolean, ...]: ... # type: ignore
+    @overload
+    @classmethod
+    def make_args(cls: type[Or], expr: Boolean) -> tuple[Boolean, ...]: ... # type: ignore
+
+    @classmethod
+    def make_args(cls: type[Basic], expr: Basic) -> tuple[Basic, ...]:
         """
         Return a sequence of elements `args` such that cls(*args) == expr
 
@@ -494,7 +517,8 @@ class LatticeOp(AssocOp):
     >>> my_join(1, 2)
     2
 
-    References:
+    References
+    ==========
 
     .. [1] https://en.wikipedia.org/wiki/Lattice_%28order%29
     """
@@ -546,10 +570,6 @@ class LatticeOp(AssocOp):
             return expr._argset
         else:
             return frozenset([sympify(expr)])
-
-    @staticmethod
-    def _compare_pretty(a, b):
-        return (str(a) > str(b)) - (str(a) < str(b))
 
 
 class AssocOpDispatcher:

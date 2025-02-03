@@ -1,9 +1,24 @@
 """Singleton mechanism"""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from .core import Registry
-from .assumptions import ManagedProperties
 from .sympify import sympify
+
+
+if TYPE_CHECKING:
+    from sympy.core.numbers import (
+        Zero as _Zero,
+        One as _One,
+        NegativeOne as _NegativeOne,
+        Half as _Half,
+        Infinity as _Infinity,
+        NegativeInfinity as _NegativeInfinity,
+        ComplexInfinity as _ComplexInfinity,
+        NaN as _NaN,
+    )
 
 
 class SingletonRegistry(Registry):
@@ -84,6 +99,15 @@ class SingletonRegistry(Registry):
     """
     __slots__ = ()
 
+    Zero: _Zero
+    One: _One
+    NegativeOne: _NegativeOne
+    Half: _Half
+    Infinity: _Infinity
+    NegativeInfinity: _NegativeInfinity
+    ComplexInfinity: _ComplexInfinity
+    NaN: _NaN
+
     # Also allow things like S(5)
     __call__ = staticmethod(sympify)
 
@@ -131,7 +155,7 @@ class SingletonRegistry(Registry):
 S = SingletonRegistry()
 
 
-class Singleton(ManagedProperties):
+class Singleton(type):
     """
     Metaclass for singleton classes.
 
@@ -162,14 +186,8 @@ class Singleton(ManagedProperties):
     Instance creation is delayed until the first time the value is accessed.
     (SymPy versions before 1.0 would create the instance during class
     creation time, which would be prone to import cycles.)
-
-    This metaclass is a subclass of ManagedProperties because that is the
-    metaclass of many classes that need to be Singletons (Python does not allow
-    subclasses to have a different metaclass than the superclass, except the
-    subclass may use a subclassed metaclass).
     """
     def __init__(cls, *args, **kwargs):
-        super().__init__(cls, *args, **kwargs)
         cls._instance = obj = Basic.__new__(cls)
         cls.__new__ = lambda cls: obj
         cls.__getnewargs__ = lambda obj: ()

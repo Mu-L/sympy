@@ -2,7 +2,8 @@
 Mathematica code printer
 """
 
-from typing import Any, Dict as tDict, Set as tSet, Tuple as tTuple
+from __future__ import annotations
+from typing import Any
 
 from sympy.core import Basic, Expr, Float
 from sympy.core.sorting import default_sort_key
@@ -26,7 +27,6 @@ known_functions = {
     "acot": [(lambda x: True, "ArcCot")],
     "asec": [(lambda x: True, "ArcSec")],
     "acsc": [(lambda x: True, "ArcCsc")],
-    "atan2": [(lambda *x: True, "ArcTan")],
     "sinh": [(lambda x: True, "Sinh")],
     "cosh": [(lambda x: True, "Cosh")],
     "tanh": [(lambda x: True, "Tanh")],
@@ -126,17 +126,13 @@ class MCodePrinter(CodePrinter):
     printmethod = "_mcode"
     language = "Wolfram Language"
 
-    _default_settings = {
-        'order': None,
-        'full_prec': 'auto',
+    _default_settings: dict[str, Any] = dict(CodePrinter._default_settings, **{
         'precision': 15,
         'user_functions': {},
-        'human': True,
-        'allow_unknown_functions': False,
-    }  # type: tDict[str, Any]
+    })
 
-    _number_symbols = set()  # type: tSet[tTuple[Expr, Float]]
-    _not_supported = set()  # type: tSet[Basic]
+    _number_symbols: set[tuple[Expr, Float]] = set()
+    _not_supported: set[Basic] = set()
 
     def __init__(self, settings={}):
         """Register function mappings supplied by user"""
@@ -317,6 +313,10 @@ class MCodePrinter(CodePrinter):
         if len(expr.args) == 1:
             return "ProductLog[{}]".format(self._print(expr.args[0]))
         return "ProductLog[{}, {}]".format(
+            self._print(expr.args[1]), self._print(expr.args[0]))
+
+    def _print_atan2(self, expr):
+        return "ArcTan[{}, {}]".format(
             self._print(expr.args[1]), self._print(expr.args[0]))
 
     def _print_Integral(self, expr):

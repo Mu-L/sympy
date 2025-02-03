@@ -568,8 +568,7 @@ def test_function__eval_nseries():
 
     # issue 6725:
     assert expint(Rational(3, 2), -x)._eval_nseries(x, 5, None) == \
-        2 - 2*sqrt(pi)*sqrt(-x) - 2*x + x**2 + x**3/3 + x**4/12 + 4*I*x**(S(3)/2)*sqrt(-x)/3 + \
-        2*I*x**(S(5)/2)*sqrt(-x)/5 + 2*I*x**(S(7)/2)*sqrt(-x)/21 + O(x**5)
+        2 - 2*x - x**2/3 - x**3/15 - x**4/84 - 2*I*sqrt(pi)*sqrt(x) + O(x**5)
     assert sin(sqrt(x))._eval_nseries(x, 3, None) == \
         sqrt(x) - x**Rational(3, 2)/6 + x**Rational(5, 2)/120 + O(x**3)
 
@@ -1258,12 +1257,7 @@ def test_undef_fcn_float_issue_6938():
 
 def test_undefined_function_eval():
     # Issue 15170. Make sure UndefinedFunction with eval defined works
-    # properly. The issue there was that the hash was determined before _nargs
-    # was set, which is included in the hash, hence changing the hash. The
-    # class is added to sympy.core.core.all_classes before the hash is
-    # changed, meaning "temp in all_classes" would fail, causing sympify(temp(t))
-    # to give a new class. We will eventually remove all_classes, but make
-    # sure this continues to work.
+    # properly.
 
     fdiff = lambda self, argindex=1: cos(self.args[argindex - 1])
     eval = classmethod(lambda cls, t: None)

@@ -97,10 +97,6 @@ class QExpr(Expr):
     # The separator used in printing the label.
     _label_separator = ''
 
-    @property
-    def free_symbols(self):
-        return {self}
-
     def __new__(cls, *args, **kwargs):
         """Construct a new quantum object.
 
@@ -280,7 +276,7 @@ class QExpr(Expr):
         Handles the printing of any unique identifying contents of a QExpr to
         print as its contents, such as any variables or quantum numbers. The
         default is to print the label, which is almost always the args. This
-        should not include printing of any brackets or parenteses.
+        should not include printing of any brackets or parentheses.
         """
         return self._print_label(printer, *args)
 

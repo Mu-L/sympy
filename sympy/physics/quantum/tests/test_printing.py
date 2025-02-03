@@ -3,7 +3,8 @@
 TODO:
 * Address Issue 2251, printing of spin states
 """
-from typing import Dict as tDict, Any
+from __future__ import annotations
+from typing import Any
 
 from sympy.physics.quantum.anticommutator import AntiCommutator
 from sympy.physics.quantum.cg import CG, Wigner3j, Wigner6j, Wigner9j
@@ -40,7 +41,7 @@ from sympy.printing.latex import latex
 MutableDenseMatrix = Matrix
 
 
-ENV = {}  # type: tDict[str, Any]
+ENV: dict[str, Any] = {}
 exec('from sympy import *', ENV)
 exec('from sympy.physics.quantum import *', ENV)
 exec('from sympy.physics.quantum.cg import *', ENV)
@@ -219,7 +220,7 @@ def test_constants():
 
 
 def test_dagger():
-    x = symbols('x')
+    x = symbols('x', commutative=False)
     expr = Dagger(x)
     assert str(expr) == 'Dagger(x)'
     ascii_str = \
@@ -235,7 +236,7 @@ x \
     assert pretty(expr) == ascii_str
     assert upretty(expr) == ucode_str
     assert latex(expr) == r'x^{\dagger}'
-    sT(expr, "Dagger(Symbol('x'))")
+    sT(expr, "Dagger(Symbol('x', commutative=False))")
 
 
 @XFAIL

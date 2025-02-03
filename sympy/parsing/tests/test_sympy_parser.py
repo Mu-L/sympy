@@ -6,7 +6,7 @@ import builtins
 import types
 
 from sympy.assumptions import Q
-from sympy.core import Symbol, Function, Float, Rational, Integer, I, Mul, Pow, Eq
+from sympy.core import Symbol, Function, Float, Rational, Integer, I, Mul, Pow, Eq, Lt, Le, Gt, Ge, Ne
 from sympy.functions import exp, factorial, factorial2, sin, Min, Max
 from sympy.logic import And
 from sympy.series import Limit
@@ -47,7 +47,7 @@ def test_sympy_parser():
         '-(2)': -Integer(2),
         '[-1, -2, 3]': [Integer(-1), Integer(-2), Integer(3)],
         'Symbol("x").free_symbols': x.free_symbols,
-        "S('S(3).n(n=3)')": 3.00,
+        "S('S(3).n(n=3)')": Float(3, 3),
         'factorint(12, visual=True)': Mul(
             Pow(2, 2, evaluate=False),
             Pow(3, 1, evaluate=False),
@@ -179,8 +179,8 @@ def test_issue_2515():
 def test_issue_7663():
     x = Symbol('x')
     e = '2*(x+1)'
-    assert parse_expr(e, evaluate=0) == parse_expr(e, evaluate=False)
-    assert parse_expr(e, evaluate=0).equals(2*(x+1))
+    assert parse_expr(e, evaluate=False) == parse_expr(e, evaluate=False)
+    assert parse_expr(e, evaluate=False).equals(2*(x+1))
 
 def test_recursive_evaluate_false_10560():
     inputs = {
@@ -279,6 +279,22 @@ def test_parse_function_issue_3539():
     f = Function('f')
     assert parse_expr('f(x)') == f(x)
 
+def test_issue_24288():
+    assert parse_expr("1 < 2", evaluate=False) == Lt(1, 2, evaluate=False)
+    assert parse_expr("1 <= 2", evaluate=False) == Le(1, 2, evaluate=False)
+    assert parse_expr("1 > 2", evaluate=False) == Gt(1, 2, evaluate=False)
+    assert parse_expr("1 >= 2", evaluate=False) == Ge(1, 2, evaluate=False)
+    assert parse_expr("1 != 2", evaluate=False) == Ne(1, 2, evaluate=False)
+    assert parse_expr("1 == 2", evaluate=False) == Eq(1, 2, evaluate=False)
+    assert parse_expr("1 < 2 < 3", evaluate=False) == And(Lt(1, 2, evaluate=False), Lt(2, 3, evaluate=False), evaluate=False)
+    assert parse_expr("1 <= 2 <= 3", evaluate=False) == And(Le(1, 2, evaluate=False), Le(2, 3, evaluate=False), evaluate=False)
+    assert parse_expr("1 < 2 <= 3 < 4", evaluate=False) == \
+        And(Lt(1, 2, evaluate=False), Le(2, 3, evaluate=False), Lt(3, 4, evaluate=False), evaluate=False)
+    # Valid Python relational operators that SymPy does not decide how to handle them yet
+    raises(ValueError, lambda: parse_expr("1 in 2", evaluate=False))
+    raises(ValueError, lambda: parse_expr("1 is 2", evaluate=False))
+    raises(ValueError, lambda: parse_expr("1 not in 2", evaluate=False))
+    raises(ValueError, lambda: parse_expr("1 is not 2", evaluate=False))
 
 def test_split_symbols_numeric():
     transformations = (

@@ -4,7 +4,7 @@ from sympy.core.numbers import Rational
 from sympy.polys import cancel, ComputationFailed, parallel_poly_from_expr, reduced, Poly
 from sympy.polys.monomials import Monomial, monomial_div
 from sympy.polys.polyerrors import DomainError, PolificationFailed
-from sympy.utilities.misc import debug
+from sympy.utilities.misc import debug, debugf
 
 def ratsimp(expr):
     """
@@ -145,16 +145,16 @@ def ratsimpmodprime(expr, G, *gens, quick=True, polynomial=False, **args):
 
             M1 = staircase(N)
             M2 = staircase(D)
-            debug('%s / %s: %s, %s' % (N, D, M1, M2))
+            debugf('%s / %s: %s, %s', (N, D, M1, M2))
 
             Cs = symbols("c:%d" % len(M1), cls=Dummy)
             Ds = symbols("d:%d" % len(M2), cls=Dummy)
             ng = Cs + Ds
 
             c_hat = Poly(
-                sum([Cs[i] * M1[i] for i in range(len(M1))]), opt.gens + ng)
+                sum(Cs[i] * M1[i] for i in range(len(M1))), opt.gens + ng)
             d_hat = Poly(
-                sum([Ds[i] * M2[i] for i in range(len(M2))]), opt.gens + ng)
+                sum(Ds[i] * M2[i] for i in range(len(M2))), opt.gens + ng)
 
             r = reduced(a * d_hat - b * c_hat, G, opt.gens + ng,
                         order=opt.order, polys=True)[1]
@@ -204,7 +204,7 @@ def ratsimpmodprime(expr, G, *gens, quick=True, polynomial=False, **args):
     c, d, allsol = _ratsimpmodprime(
         Poly(num, opt.gens, domain=opt.domain), Poly(denom, opt.gens, domain=opt.domain), [])
     if not quick and allsol:
-        debug('Looking for best minimal solution. Got: %s' % len(allsol))
+        debugf('Looking for best minimal solution. Got: %s', len(allsol))
         newsol = []
         for c_hat, d_hat, S, ng in allsol:
             sol = solve(S, ng, particular=True, quick=False)

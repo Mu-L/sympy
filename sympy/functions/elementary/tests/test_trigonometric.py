@@ -24,7 +24,7 @@ from sympy.sets.fancysets import ImageSet
 from sympy.sets.sets import (FiniteSet, Interval)
 from sympy.simplify.simplify import simplify
 from sympy.core.expr import unchanged
-from sympy.core.function import ArgumentIndexError
+from sympy.core.function import ArgumentIndexError, PoleError
 from sympy.core.relational import Ne, Eq
 from sympy.functions.elementary.piecewise import Piecewise
 from sympy.sets.setexpr import SetExpr
@@ -217,6 +217,8 @@ def test_sin_rewrite():
     assert sin(x).rewrite(cos) == cos(x - pi / 2, evaluate=False)
     assert sin(x).rewrite(sec) == 1 / sec(x - pi / 2, evaluate=False)
     assert sin(cos(x)).rewrite(Pow) == sin(cos(x))
+    assert sin(x).rewrite(besselj) == sqrt(pi*x/2)*besselj(S.Half, x)
+    assert sin(x).rewrite(besselj).subs(x, 0) == sin(0)
 
 
 def _test_extrig(f, i, e):
@@ -238,6 +240,8 @@ def test_sin_expansion():
     assert sin(2*x).expand(trig=True) == 2*sin(x)*cos(x)
     assert sin(3*x).expand(trig=True) == -4*sin(x)**3 + 3*sin(x)
     assert sin(4*x).expand(trig=True) == -8*sin(x)**3*cos(x) + 4*sin(x)*cos(x)
+    assert sin(2*pi/17).expand(trig=True) == sin(2*pi/17, evaluate=False)
+    assert sin(x+pi/17).expand(trig=True) == sin(pi/17)*cos(x) + cos(pi/17)*sin(x)
     _test_extrig(sin, 2, 2*sin(1)*cos(1))
     _test_extrig(sin, 3, -4*sin(1)**3 + 3*sin(1))
 
@@ -388,7 +392,11 @@ def test_cos():
 
     assert cos(k*pi) == (-1)**k
     assert cos(2*k*pi) == 1
-
+    assert cos(0, evaluate=False).is_zero is False
+    assert cos(Rational(1, 2)).is_zero is False
+    # The following test will return None as the result, but really it should
+    # be True even if it is not always possible to resolve an assumptions query.
+    assert cos(asin(-1, evaluate=False), evaluate=False).is_zero is None
     for d in list(range(1, 22)) + [60, 85]:
         for n in range(2*d + 1):
             x = n*pi/d
@@ -436,6 +444,11 @@ def test_cos_rewrite():
     assert cos(x).rewrite(sin) == sin(x + pi/2, evaluate=False)
     assert cos(x).rewrite(csc) == 1/csc(-x + pi/2, evaluate=False)
     assert cos(sin(x)).rewrite(Pow) == cos(sin(x))
+    assert cos(x).rewrite(besselj) == Piecewise(
+                (sqrt(pi*x/2)*besselj(-S.Half, x), Ne(x, 0)),
+                (1, True)
+            )
+    assert cos(x).rewrite(besselj).subs(x, 0) == cos(0)
 
 
 def test_cos_expansion():
@@ -445,6 +458,8 @@ def test_cos_expansion():
     assert cos(2*x).expand(trig=True) == 2*cos(x)**2 - 1
     assert cos(3*x).expand(trig=True) == 4*cos(x)**3 - 3*cos(x)
     assert cos(4*x).expand(trig=True) == 8*cos(x)**4 - 8*cos(x)**2 + 1
+    assert cos(2*pi/17).expand(trig=True) == cos(2*pi/17, evaluate=False)
+    assert cos(x+pi/17).expand(trig=True) == cos(pi/17)*cos(x) - sin(pi/17)*sin(x)
     _test_extrig(cos, 2, 2*cos(1)**2 - 1)
     _test_extrig(cos, 3, 4*cos(1)**3 - 3*cos(1))
 
@@ -580,30 +595,30 @@ def test_tan_rewrite():
     assert tan(x).rewrite(sin) == 2*sin(x)**2/sin(2*x)
     assert tan(x).rewrite(cos) == cos(x - S.Pi/2, evaluate=False)/cos(x)
     assert tan(x).rewrite(cot) == 1/cot(x)
-    assert tan(sinh(x)).rewrite(
-        exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, sinh(3)).n()
-    assert tan(cosh(x)).rewrite(
-        exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, cosh(3)).n()
-    assert tan(tanh(x)).rewrite(
-        exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, tanh(3)).n()
-    assert tan(coth(x)).rewrite(
-        exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, coth(3)).n()
-    assert tan(sin(x)).rewrite(
-        exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, sin(3)).n()
-    assert tan(cos(x)).rewrite(
-        exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, cos(3)).n()
-    assert tan(tan(x)).rewrite(
-        exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, tan(3)).n()
-    assert tan(cot(x)).rewrite(
-        exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, cot(3)).n()
+    assert tan(sinh(x)).rewrite(exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, sinh(3)).n()
+    assert tan(cosh(x)).rewrite(exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, cosh(3)).n()
+    assert tan(tanh(x)).rewrite(exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, tanh(3)).n()
+    assert tan(coth(x)).rewrite(exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, coth(3)).n()
+    assert tan(sin(x)).rewrite(exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, sin(3)).n()
+    assert tan(cos(x)).rewrite(exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, cos(3)).n()
+    assert tan(tan(x)).rewrite(exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, tan(3)).n()
+    assert tan(cot(x)).rewrite(exp).subs(x, 3).n() == tan(x).rewrite(exp).subs(x, cot(3)).n()
     assert tan(log(x)).rewrite(Pow) == I*(x**-I - x**I)/(x**-I + x**I)
+    assert tan(x).rewrite(sec) == sec(x)/sec(x - pi/2, evaluate=False)
+    assert tan(x).rewrite(csc) == csc(-x + pi/2, evaluate=False)/csc(x)
+    assert tan(sin(x)).rewrite(Pow) == tan(sin(x))
+    assert tan(pi*Rational(2, 5), evaluate=False).rewrite(sqrt) == sqrt(sqrt(5)/8 +
+               Rational(5, 8))/(Rational(-1, 4) + sqrt(5)/4)
+    assert tan(x).rewrite(besselj) == besselj(S.Half, x)/besselj(-S.Half, x)
+    assert tan(x).rewrite(besselj).subs(x, 0) == tan(0)
+
+
+@slow
+def test_tan_rewrite_slow():
     assert 0 == (cos(pi/34)*tan(pi/34) - sin(pi/34)).rewrite(pow)
     assert 0 == (cos(pi/17)*tan(pi/17) - sin(pi/17)).rewrite(pow)
     assert tan(pi/19).rewrite(pow) == tan(pi/19)
     assert tan(pi*Rational(8, 19)).rewrite(sqrt) == tan(pi*Rational(8, 19))
-    assert tan(x).rewrite(sec) == sec(x)/sec(x - pi/2, evaluate=False)
-    assert tan(x).rewrite(csc) == csc(-x + pi/2, evaluate=False)/csc(x)
-    assert tan(sin(x)).rewrite(Pow) == tan(sin(x))
     assert tan(pi*Rational(2, 5), evaluate=False).rewrite(sqrt) == sqrt(sqrt(5)/8 +
                Rational(5, 8))/(Rational(-1, 4) + sqrt(5)/4)
 
@@ -759,8 +774,7 @@ def test_cot_rewrite():
     assert cot(x).rewrite(cos) == cos(x)/cos(x - pi/2, evaluate=False)
     assert cot(x).rewrite(tan) == 1/tan(x)
     def check(func):
-        z = cot(func(x)).rewrite(exp
-            ) - cot(x).rewrite(exp).subs(x, func(x))
+        z = cot(func(x)).rewrite(exp) - cot(x).rewrite(exp).subs(x, func(x))
         assert z.rewrite(exp).expand() == 0
     check(sinh)
     check(cosh)
@@ -770,15 +784,25 @@ def test_cot_rewrite():
     check(cos)
     check(tan)
     assert cot(log(x)).rewrite(Pow) == -I*(x**-I + x**I)/(x**-I - x**I)
-    assert cot(pi*Rational(4, 34)).rewrite(pow).ratsimp() == (cos(pi*Rational(4, 34))/sin(pi*Rational(4, 34))).rewrite(pow).ratsimp()
-    assert cot(pi*Rational(4, 17)).rewrite(pow) == (cos(pi*Rational(4, 17))/sin(pi*Rational(4, 17))).rewrite(pow)
-    assert cot(pi/19).rewrite(pow) == cot(pi/19)
-    assert cot(pi/19).rewrite(sqrt) == cot(pi/19)
     assert cot(x).rewrite(sec) == sec(x - pi / 2, evaluate=False) / sec(x)
     assert cot(x).rewrite(csc) == csc(x) / csc(- x + pi / 2, evaluate=False)
     assert cot(sin(x)).rewrite(Pow) == cot(sin(x))
     assert cot(pi*Rational(2, 5), evaluate=False).rewrite(sqrt) == (Rational(-1, 4) + sqrt(5)/4)/\
                                                         sqrt(sqrt(5)/8 + Rational(5, 8))
+    assert cot(x).rewrite(besselj) == besselj(-S.Half, x)/besselj(S.Half, x)
+    assert cot(x).rewrite(besselj).subs(x, 0) == cot(0)
+
+
+@slow
+def test_cot_rewrite_slow():
+    assert cot(pi*Rational(4, 34)).rewrite(pow).ratsimp() == \
+        (cos(pi*Rational(4, 34))/sin(pi*Rational(4, 34))).rewrite(pow).ratsimp()
+    assert cot(pi*Rational(4, 17)).rewrite(pow) == \
+        (cos(pi*Rational(4, 17))/sin(pi*Rational(4, 17))).rewrite(pow)
+    assert cot(pi/19).rewrite(pow) == cot(pi/19)
+    assert cot(pi/19).rewrite(sqrt) == cot(pi/19)
+    assert cot(pi*Rational(2, 5), evaluate=False).rewrite(sqrt) == \
+        (Rational(-1, 4) + sqrt(5)/4) / sqrt(sqrt(5)/8 + Rational(5, 8))
 
 
 def test_cot_subs():
@@ -977,10 +1001,13 @@ def test_acos():
     assert acos(-sqrt(2)/2) == pi*Rational(3, 4)
 
     # check round-trip for exact values:
-    for d in [5, 6, 8, 10, 12]:
+    for d in range(5, 13):
         for num in range(d):
             if gcd(num, d) == 1:
                 assert acos(cos(num*pi/d)) == num*pi/d
+                assert acos(-cos(num*pi/d)) == pi - num*pi/d
+                assert acos(sin(num*pi/d)) == pi/2 - asin(sin(num*pi/d))
+                assert acos(-sin(num*pi/d)) == pi/2 - asin(-sin(num*pi/d))
 
     assert acos(2*I) == pi/2 - asin(2*I)
 
@@ -1551,7 +1578,6 @@ def test_sincos_rewrite_sqrt():
                     assert 1e-3 > abs(sin(x.evalf(5)) - s1.evalf(2)), "fails for %d*pi/%d" % (i, n)
                     assert 1e-3 > abs(cos(x.evalf(5)) - c1.evalf(2)), "fails for %d*pi/%d" % (i, n)
     assert cos(pi/14).rewrite(sqrt) == sqrt(cos(pi/7)/2 + S.Half)
-    assert cos(pi/257).rewrite(sqrt).evalf(64) == cos(pi/257).evalf(64)
     assert cos(pi*Rational(-15, 2)/11, evaluate=False).rewrite(
         sqrt) == -sqrt(-cos(pi*Rational(4, 11))/2 + S.Half)
     assert cos(Mul(2, pi, S.Half, evaluate=False), evaluate=False).rewrite(
@@ -1607,6 +1633,11 @@ def test_sincos_rewrite_sqrt():
     # different but that portion of the code should be tested in some way
     assert cos(pi/9/17).rewrite(sqrt) == \
         sin(pi/9)*sin(pi*Rational(2, 17)) + cos(pi/9)*cos(pi*Rational(2, 17))
+
+
+@slow
+def test_sincos_rewrite_sqrt_257():
+    assert cos(pi/257).rewrite(sqrt).evalf(64) == cos(pi/257).evalf(64)
 
 
 @slow
@@ -1701,6 +1732,11 @@ def test_sec_rewrite():
     assert sec(x).rewrite(sin) == 1 / sin(x + pi / 2, evaluate=False)
     assert sec(x).rewrite(tan) == (tan(x / 2)**2 + 1) / (-tan(x / 2)**2 + 1)
     assert sec(x).rewrite(csc) == csc(-x + pi/2, evaluate=False)
+    assert sec(x).rewrite(besselj) == Piecewise(
+                (sqrt(2)/(sqrt(pi*x)*besselj(-S.Half, x)), Ne(x, 0)),
+                (1, True)
+            )
+    assert sec(x).rewrite(besselj).subs(x, 0) == sec(0)
 
 
 def test_sec_fdiff():
@@ -1791,6 +1827,14 @@ def test_asec():
     assert asec(sqrt(2 + 2*sqrt(5)/5)) == pi*Rational(3, 10)
     assert asec(-sqrt(2 + 2*sqrt(5)/5)) == pi*Rational(7, 10)
     assert asec(sqrt(2) - sqrt(6)) == pi*Rational(11, 12)
+
+    for d in [3, 4, 6]:
+        for num in range(d):
+            if gcd(num, d) == 1:
+                assert asec(sec(num*pi/d)) == num*pi/d
+                assert asec(-sec(num*pi/d)) == pi - num*pi/d
+                assert asec(csc(num*pi/d)) == pi/2 - acsc(csc(num*pi/d))
+                assert asec(-csc(num*pi/d)) == pi/2 - acsc(-csc(num*pi/d))
 
     assert asec(x).diff(x) == 1/(x**2*sqrt(1 - 1/x**2))
 
@@ -1893,6 +1937,8 @@ def test_csc_rewrite():
     assert csc(1 - exp(-besselj(I, I))).rewrite(cos) == \
            -1/cos(-pi/2 - 1 + cos(I*besselj(I, I)) +
                   I*cos(-pi/2 + I*besselj(I, I), evaluate=False), evaluate=False)
+    assert csc(x).rewrite(besselj) == sqrt(2)/(sqrt(pi*x)*besselj(S.Half, x))
+    assert csc(x).rewrite(besselj).subs(x, 0) == csc(0)
 
 
 def test_acsc_leading_term():
@@ -2151,3 +2197,48 @@ def test_as_real_imag():
 def test_issue_18746():
     e3 = cos(S.Pi*(x/4 + 1/4))
     assert e3.period() == 8
+
+
+def test_issue_25833():
+    assert limit(atan(x**2), x, oo) == pi/2
+    assert limit(atan(x**2 - 1), x, oo) == pi/2
+    assert limit(atan(log(2**x)/log(2*x)), x, oo) == pi/2
+
+
+def test_issue_25847():
+    #atan
+    assert atan(sin(x)/x).as_leading_term(x) == pi/4
+    raises(PoleError, lambda: atan(exp(1/x)).as_leading_term(x))
+
+    #asin
+    assert asin(sin(x)/x).as_leading_term(x) == pi/2
+    raises(PoleError, lambda: asin(exp(1/x)).as_leading_term(x))
+
+    #acos
+    assert acos(sin(x)/x).as_leading_term(x) == 0
+    raises(PoleError, lambda: acos(exp(1/x)).as_leading_term(x))
+
+    #acot
+    assert acot(sin(x)/x).as_leading_term(x) == pi/4
+    raises(PoleError, lambda: acot(exp(1/x)).as_leading_term(x))
+
+    #asec
+    assert asec(sin(x)/x).as_leading_term(x) == 0
+    raises(PoleError, lambda: asec(exp(1/x)).as_leading_term(x))
+
+    #acsc
+    assert acsc(sin(x)/x).as_leading_term(x) == pi/2
+    raises(PoleError, lambda: acsc(exp(1/x)).as_leading_term(x))
+
+def test_issue_23843():
+    #atan
+    assert atan(x + I).series(x, oo) == -16/(5*x**5) - 2*I/x**4 + 4/(3*x**3) + I/x**2 - 1/x + pi/2 + O(x**(-6), (x, oo))
+    assert atan(x + I).series(x, -oo) == -16/(5*x**5) - 2*I/x**4 + 4/(3*x**3) + I/x**2 - 1/x - pi/2 + O(x**(-6), (x, -oo))
+    assert atan(x - I).series(x, oo) == -16/(5*x**5) + 2*I/x**4 + 4/(3*x**3) - I/x**2 - 1/x + pi/2 + O(x**(-6), (x, oo))
+    assert atan(x - I).series(x, -oo) == -16/(5*x**5) + 2*I/x**4 + 4/(3*x**3) - I/x**2 - 1/x - pi/2 + O(x**(-6), (x, -oo))
+
+    #acot
+    assert acot(x + I).series(x, oo) == 16/(5*x**5) + 2*I/x**4 - 4/(3*x**3) - I/x**2 + 1/x + O(x**(-6), (x, oo))
+    assert acot(x + I).series(x, -oo) == 16/(5*x**5) + 2*I/x**4 - 4/(3*x**3) - I/x**2 + 1/x + O(x**(-6), (x, -oo))
+    assert acot(x - I).series(x, oo) == 16/(5*x**5) - 2*I/x**4 - 4/(3*x**3) + I/x**2 + 1/x + O(x**(-6), (x, oo))
+    assert acot(x - I).series(x, -oo) == 16/(5*x**5) - 2*I/x**4 - 4/(3*x**3) + I/x**2 + 1/x + O(x**(-6), (x, -oo))

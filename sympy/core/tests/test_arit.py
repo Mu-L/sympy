@@ -14,10 +14,11 @@ from sympy.functions.elementary.exponential import (exp, log)
 from sympy.functions.elementary.integers import floor
 from sympy.functions.elementary.miscellaneous import (Max, sqrt)
 from sympy.functions.elementary.trigonometric import (atan, cos, sin)
+from sympy.integrals.integrals import Integral
 from sympy.polys.polytools import Poly
 from sympy.sets.sets import FiniteSet
 
-from sympy.core.parameters import distribute
+from sympy.core.parameters import distribute, evaluate
 from sympy.core.expr import unchanged
 from sympy.utilities.iterables import permutations
 from sympy.testing.pytest import XFAIL, raises, warns
@@ -1632,6 +1633,8 @@ def test_issue_3531():
     # https://github.com/sympy/sympy/issues/3531
     # https://github.com/sympy/sympy/pull/18116
     class MightyNumeric(tuple):
+        __slots__ = ()
+
         def __rtruediv__(self, other):
             return "something"
 
@@ -1723,6 +1726,11 @@ def test_Add_as_coeff_mul():
 def test_Pow_as_coeff_mul_doesnt_expand():
     assert exp(x + y).as_coeff_mul() == (1, (exp(x + y),))
     assert exp(x + exp(x + y)) != exp(x + exp(x)*exp(y))
+
+def test_issue_24751():
+    expr = Add(-2, -3, evaluate=False)
+    expr1 = Add(-1, expr, evaluate=False)
+    assert int(expr1) == int((-3 - 2) - 1)
 
 
 def test_issue_3514_18626():
@@ -1963,8 +1971,9 @@ def test_Mod():
     #issue 13543
     assert Mod(Mod(x + 1, 2) + 1, 2) == Mod(x, 2)
 
-    assert Mod(Mod(x + 2, 4)*(x + 4), 4) == Mod(x*(x + 2), 4)
-    assert Mod(Mod(x + 2, 4)*4, 4) == 0
+    x1 = Symbol('x1', integer=True)
+    assert Mod(Mod(x1 + 2, 4)*(x1 + 4), 4) == Mod(x1*(x1 + 2), 4)
+    assert Mod(Mod(x1 + 2, 4)*4, 4) == 0
 
     # issue 15493
     i, j = symbols('i j', integer=True, positive=True)
@@ -1985,6 +1994,15 @@ def test_Mod():
     expr = exp(sinh(Piecewise((x_r, y_r > x_r), (y_r, True)) / z))
     expr.subs({1: 1.0})
     sinh(Piecewise((x_r, y_r > x_r), (y_r, True)) * z ** -1.0).is_zero
+
+    # issue 24215
+    from sympy.abc import phi
+    assert Mod(4.0*Mod(phi, 1) , 2) == 2.0*(Mod(2*(Mod(phi, 1)), 1))
+
+    xi = symbols('x', integer=True)
+    assert unchanged(Mod, xi, 2)
+    assert Mod(3*xi, 2) == Mod(xi, 2)
+    assert unchanged(Mod, 3*x, 2)
 
 
 def test_Mod_Pow():
@@ -2222,7 +2240,7 @@ def test_denest_add_mul():
     eq = Mul(eq, 2, evaluate=False)
     eq = Mul(eq, 2, evaluate=False)
     assert Mul(*eq.args) == 8*x
-    # but don't let them denest unecessarily
+    # but don't let them denest unnecessarily
     eq = Mul(-2, x - 2, evaluate=False)
     assert 2*eq == Mul(-4, x - 2, evaluate=False)
     assert -eq == Mul(2, x - 2, evaluate=False)
@@ -2340,6 +2358,14 @@ def test_Mul_does_not_distribute_infinity():
     assert ((1 - I)*z).expand() is oo
 
 
+def test_Mul_does_not_let_0_trump_inf():
+    assert Mul(*[0, a + zoo]) is S.NaN
+    assert Mul(*[0, a + oo]) is S.NaN
+    assert Mul(*[0, a + Integral(1/x**2, (x, 1, oo))]) is S.Zero
+    # Integral is treated like an unknown like 0*x -> 0
+    assert Mul(*[0, a + Integral(x, (x, 1, oo))]) is S.Zero
+
+
 def test_issue_8247_8354():
     from sympy.functions.elementary.trigonometric import tan
     z = sqrt(1 + sqrt(3)) + sqrt(3 + 3*sqrt(3)) - sqrt(10 + 6*sqrt(3))
@@ -2386,6 +2412,9 @@ def test__neg__():
     assert -(2.*x) == -2.*x
     assert -(-2.*x) == 2.*x
     with distribute(False):
+        eq = -(x + y)
+        assert eq.is_Mul and eq.args == (-1, x + y)
+    with evaluate(False):
         eq = -(x + y)
         assert eq.is_Mul and eq.args == (-1, x + y)
 
@@ -2448,3 +2477,7 @@ def test_issue_22453():
 def test_issue_22613():
     assert (0**(x - 2)).as_content_primitive() == (1, 0**(x - 2))
     assert (0**(x + 2)).as_content_primitive() == (1, 0**(x + 2))
+
+
+def test_issue_25176():
+    assert sqrt(-4*3**(S(3)/4)*I/3) == 2*3**(S(7)/8)*sqrt(-I)/3
